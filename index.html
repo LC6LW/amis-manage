@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8"/>
+    <title>后台管理</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+    <link rel="stylesheet" href="amis-sdk/ang.css"/>
+    <link rel="stylesheet" href="amis-sdk/helper.css"/>
+
+    <link rel="stylesheet" href="css/public.css"/>
+
+
+</head>
+<body>
+<div id="root" class="app-wrapper"></div>
+<script src="amis-sdk/sdk.js?re=1"></script>
+<script src="./js/axios.min.js"></script>
+<script type="module">
+    import './js/php.js';
+
+    import url from "./config/urlPath.js";
+
+    // 根据权限判断需要展示的菜单
+    import menuService from "./pages/json/menu.js"
+
+    import {empty} from "./js/php.js";
+
+    let kf_store_info = ls.get('56382cc1');
+
+    if (empty(kf_store_info)) {
+        location.href="login.html"
+    }
+
+    let authenticated = kf_store_info.session_id;
+
+    if (empty(authenticated)) {
+        location.href="login.html"
+    }
+
+
+    // || localStorage.getItem('kf_user_role') === null
+    let user_info  =  await  getCurLoginInfo(authenticated)
+    let user_role = user_info.cur_all_permission
+    // 应该重新获取一下权限
+    let menus = menuService(user_role);
+
+    (function () {
+
+
+        let amis = amisRequire('amis/embed');
+
+        let amisLib = amisRequire('amis');
+        amisLib.registerFilter('asCompare', function (input) {
+            if (!empty(input)) {
+                return  '是';
+            }
+
+            return  '否'
+        });
+
+        amisLib.registerFilter('serviceTypeMap', function (input) {
+            if (input.type == 'no') {
+                return "<span class='label label-danger'>未转接</span>"
+            }
+            //
+            // let m = {
+            //     'wx_pay' : "微信支付",
+            //     'furnish' : "装修",
+            //     'refund' : "退款纠纷",
+            //     'operation' : "代运营",
+            // }
+            //
+
+            // style='background:#FFA54F'
+
+            let sta = input.status == 1 ? '已完成' : '未完成';
+            let color = input.status == 1 ? '#27c24c' : '#FFA54F';
+
+
+            if (input.type == 'wx_pay') {
+                return "<span class='label'   style='background:"+color+"'> 微信支付-"+sta+"</span>"
+            }
+
+            if (input.type == 'furnish') {
+                return "<span class='label'  style='background:"+color+"'> 装修-"+sta+"</span>"
+            }
+
+            if (input.type == 'refund') {
+                return "<span class='label' style='background:"+color+"'> 退款纠纷-"+sta+"</span>"
+            }
+
+            if (input.type == 'operation') {
+                return "<span class='label' style='background:"+color+"'> 代运营-"+sta+"</span>"
+            }
+
+
+
+        });
+
+
+
+
+        function loginOut() {
+            ls.remove('56382cc1')
+            location.href="login.html";
+        }
+
+
+
+        const app = {
+            type: 'app',
+            brandName: '',
+            logo: 'http://www.coreframe.com.cn/images/logo.png',
+
+            data: {
+                "authenticated": authenticated,
+                "user_name": user_info.customer_user_name,
+                "user_mobile": user_info.cur_user_mobile,
+                "customer_code": user_info.customer_code,
+            },
+
+            header: [
+                {
+                    "type": "flex",
+                    "justify": "flex-end",
+                    "className" : "header_my",
+                    "items": [
+                        {
+                            "type": "service",
+                            "api": {
+                                "method": "post",
+                                "url": url.orderNotify,
+                                "data": {
+                                    is_inquire_lists: 0,
+                                    is_clear_msg : 0,
+                                }
+                            },
+                            "silentPolling": true,
+                            "interval": 5000,
+                            "body" : [
+                                {
+
+                                    "icon": "fa fa-commenting-o",
+                                    // "icon": "fa fa-user",
+
+                                    "type": "button",
+                                    "actionType": "drawer",
+                                    "level": "link",
+                                    "size": "lg",
+                                    "className": "text-info text-xl",
+                                    "badge": {
+                                        "text": "${notify_count}",
+                                        "overflowCount": 9,
+                                        // "animation": true,
+
+                                        "mode": "text",
+                                        "size": 14,
+                                        "offset": [
+                                            10,
+                                            22
+                                        ],
+                                        "visibleOn" : "data.notify_count >0 ",
+                                        "position": "top-right"
+                                    },
+                                    "drawer": {
+                                        "position": "right",
+                                        "size": "sm",
+                                        "closeOnOutside":false,
+                                        "overlay":false,
+                                        "actions": [
+                                            {
+                                                "type": "button",
+                                                "actionType": "close",
+                                                "label": "关闭",
+                                                "primary": true
+                                            }
+                                        ],
+                                        "title": "消息",
+                                        "body": {
+                                            "type": "service",
+                                            // "interval": 5000,
+                                            // "api": "http://192.168.1.133:9002/index.html#/index",
+                                            "body": [
+                                                {
+                                                    "type": "timeline",
+                                                    "source" : {
+                                                        "url" :url.orderNotify,
+                                                        "data" :{
+                                                            is_inquire_lists : 1,
+                                                            is_clear_msg : 1,
+                                                        }
+                                                            // "api":
+
+                                                    },
+                                                    // "items": [
+                                                    //     {
+                                                    //         "time": "2019-02-07",
+                                                    //         "title": [
+                                                    //             {
+                                                    //                 "type": "tpl",
+                                                    //                 "tpl": "<h2>2019年02月7日<br/> qwe</h2>"
+                                                    //             },
+                                                    //             {
+                                                    //                 "type": "button",
+                                                    //                 "label": "点击查看",
+                                                    //                 "level": "link",
+                                                    //                 "actionType": "link",
+                                                    //                 "link": "/order/auth"
+                                                    //
+                                                    //             },
+                                                    //
+                                                    //
+                                                    //         ]
+                                                    //     },
+                                                    // ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+
+                            ],
+
+                        },
+                        {
+                            "style": {
+                                "width": 35,
+                            },
+                            "type" :"tpl"
+
+                        },
+
+                        {
+
+                            "type": "dropdown-button",
+                            "level": "link",
+                            "icon": "fa fa-user",
+                            // "icon": "https://tcs-devops.aliyuncs.com/thumbnail/112jd2652ed29b96250d4dc7643e3de6dfea/w/240/h/240",
+                            "btnClassName": "text-info text-xl",
+
+                            "hideCaret": true,
+                            "trigger" : "hover",
+                            "align" :"right",
+
+                            "buttons": [
+
+                                {
+
+                                    "actionType": "custom",
+                                    "icon": "fa fa-user",
+                                    "type": "button",
+                                    // "disabled": true,
+                                    // "className": "text-success",
+                                    "level": "info",
+                                    "label": "　${customer_code}-${user_name}-${user_mobile}　"
+                                },
+                                {
+                                    "type": "button",
+                                    "label": "功能",
+                                    "level": "info"
+                                },
+                                {
+
+                                    "actionType": "custom",
+                                    "icon": "fa fa-sign-out",
+                                    "type": "button",
+                                    "className": "text-info",
+
+                                    // "className": "border-white",
+                                    "onClick": "  ls.remove('56382cc1')\n" +
+                                        "            location.href=\"login.html\"; ",
+                                    "label": "　退出登录"
+                                },
+                            ]
+                        }
+                    ]
+                },
+
+
+            ],
+
+            "pages": menus
+        };
+
+        function normalizeLink(to, location = window.location) {
+            to = to || '';
+
+            if (to && to[0] === '#') {
+                to = location.pathname + location.search + to;
+            } else if (to && to[0] === '?') {
+                to = location.pathname + to;
+            }
+
+            const idx = to.indexOf('?');
+            const idx2 = to.indexOf('#');
+            let pathname = ~idx
+                ? to.substring(0, idx)
+                : ~idx2
+                    ? to.substring(0, idx2)
+                    : to;
+            let search = ~idx ? to.substring(idx, ~idx2 ? idx2 : undefined) : '';
+            let hash = ~idx2 ? to.substring(idx2) : location.hash;
+
+            if (!pathname) {
+                pathname = location.pathname;
+            } else if (pathname[0] != '/' && !/^https?\:\/\//.test(pathname)) {
+                let relativeBase = location.pathname;
+                const paths = relativeBase.split('/');
+                paths.pop();
+                let m;
+                while ((m = /^\.\.?\//.exec(pathname))) {
+                    if (m[0] === '../') {
+                        paths.pop();
+                    }
+                    pathname = pathname.substring(m[0].length);
+                }
+                pathname = paths.concat(pathname).join('/');
+            }
+
+            return pathname + search + hash;
+        }
+        const match = amisRequire('path-to-regexp').match;
+
+        let amisScoped = amis.embed(
+            '#root',
+            app,
+            {},
+            {
+                // 全局加上session_id
+                requestAdaptor(api) {
+                    // console.log(api)
+                    if (!api.data) {
+                        api.data = {};
+                    }
+
+
+                    if (api.method === 'get') {
+                        let url = api.url;
+
+                        let g = url.includes('?') ? '&' : '?';
+                        api.url = url+g + 'session_id=' + authenticated;
+
+                    } else  {
+                        api.data.session_id = authenticated;
+                    }
+
+                    return api;
+                },
+
+
+                watchRouteChange: fn => {
+                    window.addEventListener('hashchange', fn);
+                    return () => {
+                        window.removeEventListener('hashchange', fn);
+                    };
+                },
+                jumpTo: to => {
+                    location.hash = to;
+                },
+                isCurrentUrl: (to, ctx) => {
+                    if (!to) {
+                        return false;
+                    }
+                    const pathname = location.hash ? location.hash.substring(1) : '/';
+                    const link = normalizeLink(to, {
+                        ...location,
+                        pathname,
+                        hash: ''
+                    });
+
+                    if (!~link.indexOf('http') && ~link.indexOf(':')) {
+                        let strict = ctx && ctx.strict;
+                        return match(link, {
+                            decode: decodeURIComponent,
+                            strict: typeof strict !== 'undefined' ? strict : true
+                        })(pathname);
+                    }
+
+                    return pathname === link;
+                },
+                theme: 'ang'
+            }
+        );
+
+    })();
+
+    // 获取url参数
+    function getQueryVariable(variable)
+    {
+        var query = window.location.search.substring(1);
+        var vars = query.split("&");
+        for (var i=0;i<vars.length;i++) {
+            var pair = vars[i].split("=");
+            if(pair[0] == variable){return pair[1];}
+        }
+        return(false);
+    }
+
+    // 获取信息
+    async  function getCurLoginInfo(authenticated)
+    {
+        var result={};
+
+        await  axios.post(url.getCurLoginUserInfo,
+            {
+                session_id: authenticated
+            })
+            .then(function (rs) {
+                // console.log(rs)
+                result = rs.data
+
+            })
+            .catch(function (e) {
+                return alert('error');
+            });
+
+        // console.log(result.data.cur_user_role);
+
+        if (result.code == 1049) {
+            alert(result.msg);
+            location.href="login.html"
+
+            return;
+        }
+
+        if (empty(result.data.cur_all_permission)) {
+            alert('Failed to obtain permission')
+            return  {}
+        }
+
+
+        return result.data;
+    }
+
+</script>
+</body>
+</html>
